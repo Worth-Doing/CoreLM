@@ -29,7 +29,14 @@ struct HFFileInfo: Codable, Identifiable {
     var id: String { path }
 
     var isGGUF: Bool {
-        path.lowercased().hasSuffix(".gguf")
+        let lp = path.lowercased()
+        guard lp.hasSuffix(".gguf") else { return false }
+        // Filter out vision/CLIP encoder files — not loadable as LLMs
+        let visionPatterns = ["mmproj", "clip", "vision", "encoder", "projector", "image-encoder"]
+        for pattern in visionPatterns {
+            if lp.contains(pattern) { return false }
+        }
+        return true
     }
 
     var fileSize: Int64 {

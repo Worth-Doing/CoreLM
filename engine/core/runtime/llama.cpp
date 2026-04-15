@@ -127,8 +127,12 @@ bool LlamaModel::load(const std::string& path, std::string& error) {
     gguf_ = std::move(result.file);
     config_ = ModelConfig::from_gguf(*gguf_);
 
+    if (config_.architecture == "clip" || config_.architecture == "mllama_vision") {
+        error = "This is a vision encoder file (CLIP), not a language model. Download the main model file instead.";
+        return false;
+    }
     if (config_.architecture != "llama") {
-        error = "unsupported architecture: " + config_.architecture;
+        error = "Unsupported architecture: " + config_.architecture + ". CoreLM supports LLaMA-family models.";
         return false;
     }
 

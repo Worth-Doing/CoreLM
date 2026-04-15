@@ -394,8 +394,14 @@ GGUFValidateResult gguf_validate(const std::string& path) {
     result.model_name = f.get_string("general.name");
 
     // Check architecture
+    if (result.architecture == "clip" || result.architecture == "mllama_vision") {
+        result.error = "This is a vision encoder file (CLIP/mmproj), not a language model. "
+                       "Download the main model file instead, not the vision projector.";
+        return result;
+    }
     if (result.architecture != "llama") {
-        result.error = "unsupported architecture: " + result.architecture + " (expected llama)";
+        result.error = "Unsupported architecture: " + result.architecture + ". "
+                       "CoreLM currently supports LLaMA-family models only.";
         return result;
     }
 
