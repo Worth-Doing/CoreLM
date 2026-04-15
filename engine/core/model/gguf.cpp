@@ -414,8 +414,16 @@ GGUFValidateResult gguf_validate(const std::string& path) {
         }
     }
 
-    // Check we support this quantization
+    // Accept all common quantization types for validation
+    // The engine will handle unsupported types at load time with better errors
     bool supported = (result.quantization == "Q4_0" ||
+                      result.quantization == "Q4_1" ||
+                      result.quantization == "Q4_K" ||
+                      result.quantization == "Q5_0" ||
+                      result.quantization == "Q5_1" ||
+                      result.quantization == "Q5_K" ||
+                      result.quantization == "Q6_K" ||
+                      result.quantization == "Q8_0" ||
                       result.quantization == "F16" ||
                       result.quantization == "F32");
     if (!supported) {

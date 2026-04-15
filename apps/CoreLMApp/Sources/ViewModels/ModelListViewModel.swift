@@ -25,37 +25,63 @@ final class ModelListViewModel {
     }
 
     func importModel(at url: URL) {
-        // Validate GGUF before importing
-        let (valid, info) = CoreLMRuntime.validateModel(at: url)
-
-        if !valid {
-            importError = "Invalid or unsupported model file. CoreLM requires GGUF format with LLaMA architecture."
+        // Check file extension
+        let ext = url.pathExtension.lowercased()
+        if ext != "gguf" && ext != "bin" {
+            importError = "Unsupported file type: .\(ext)\n\nCoreLM accepts .gguf model files. Download GGUF models from HuggingFace."
             return
         }
 
+        // Check file exists and is readable
+        guard FileManager.default.isReadableFile(atPath: url.path) else {
+            importError = "Cannot read file. Check permissions."
+            return
+        }
+
+        // Save a security-scoped bookmark for later access
+        let bookmarkData: Data?
         do {
-            var model = try modelRegistry.importModel(at: url)
+            bookmarkData = try url.bookmarkData(
+                options: .withSecurityScope,
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+        } catch {
+            bookmarkData = nil
+        }
 
-            // Populate metadata from GGUF validation
-            if let info {
-                if let name = info.name { model.name = String(cString: name) }
-                if let arch = info.architecture { model.architecture = String(cString: arch) }
-                if let quant = info.quantization { model.quantization = String(cString: quant) }
-                model.fileSizeBytes = info.file_size_bytes
-                model.contextLength = Int(info.context_length)
-                model.embeddingLength = Int(info.embedding_length)
-                model.numLayers = Int(info.num_layers)
-                model.numHeads = Int(info.num_heads)
-                model.numKVHeads = Int(info.num_kv_heads)
-                model.vocabSize = Int(info.vocab_size)
-
-                // Update the model in registry with enriched metadata
-                modelRegistry.updateModel(model)
-            }
-
-            importError = nil
+        // Import into registry first (so user sees it even if validation is slow)
+        let model: ModelInfo
+        do {
+            model = try modelRegistry.importModel(at: url)
         } catch {
             importError = error.localizedDescription
+            return
+        }
+
+        // Store bookmark if available
+        if let bookmarkData {
+            modelRegistry.setBookmark(id: model.id, data: bookmarkData)
+        }
+
+        // Try GGUF validation to enrich metadata
+        let (valid, info) = CoreLMRuntime.validateModel(at: url)
+        if valid, let info {
+            var enriched = model
+            if let name = info.name { enriched.name = String(cString: name) }
+            if let arch = info.architecture { enriched.architecture = String(cString: arch) }
+            if let quant = info.quantization { enriched.quantization = String(cString: quant) }
+            enriched.fileSizeBytes = info.file_size_bytes
+            enriched.contextLength = Int(info.context_length)
+            enriched.embeddingLength = Int(info.embedding_length)
+            enriched.numLayers = Int(info.num_layers)
+            enriched.numHeads = Int(info.num_heads)
+            enriched.numKVHeads = Int(info.num_kv_heads)
+            enriched.vocabSize = Int(info.vocab_size)
+            modelRegistry.updateModel(enriched)
+        } else if !valid {
+            // Model imported but validation failed — show warning, don't remove
+            importError = "Model imported but may not load correctly.\n\nCoreLM currently supports LLaMA-architecture models with Q4_0, Q4_K, Q5_K, Q6_K, Q8_0, F16, or F32 quantization."
         }
     }
 
@@ -72,7 +98,18 @@ final class ModelListViewModel {
 
         Task {
             do {
-                let url = URL(fileURLWithPath: model.filePath)
+                // Try bookmark-based URL first (for security-scoped access)
+                var url: URL
+                var gotAccess = false
+                if let bookmarkURL = modelRegistry.resolveBookmark(id: id) {
+                    url = bookmarkURL
+                    gotAccess = url.startAccessingSecurityScopedResource()
+                } else {
+                    url = URL(fileURLWithPath: model.filePath)
+                }
+
+                defer { if gotAccess { url.stopAccessingSecurityScopedResource() } }
+
                 try await runtime.loadModel(at: url)
                 await MainActor.run {
                     modelRegistry.setLoaded(id: id)
@@ -80,7 +117,7 @@ final class ModelListViewModel {
                 }
             } catch {
                 await MainActor.run {
-                    importError = error.localizedDescription
+                    importError = "Failed to load model: \(error.localizedDescription)"
                     isLoading = false
                 }
             }
@@ -101,5 +138,15 @@ final class ModelListViewModel {
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
-    static let ggufType = UTType(filenameExtension: "gguf") ?? .data
+    // Accept .gguf files (custom UTType) and .bin as fallback, plus generic data
+    static let allowedTypes: [UTType] = {
+        var types: [UTType] = [.data, .item]
+        if let gguf = UTType(filenameExtension: "gguf") {
+            types.insert(gguf, at: 0)
+        }
+        if let bin = UTType(filenameExtension: "bin") {
+            types.insert(bin, at: 0)
+        }
+        return types
+    }()
 }

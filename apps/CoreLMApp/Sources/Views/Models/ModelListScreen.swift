@@ -51,12 +51,15 @@ struct ModelListScreen: View {
         }
         .fileImporter(
             isPresented: $showFileImporter,
-            allowedContentTypes: [ModelListViewModel.ggufType],
+            allowedContentTypes: ModelListViewModel.allowedTypes,
             allowsMultipleSelection: false
         ) { result in
             switch result {
             case .success(let urls):
                 if let url = urls.first {
+                    // Security-scoped access for sandboxed file picker URLs
+                    let gotAccess = url.startAccessingSecurityScopedResource()
+                    defer { if gotAccess { url.stopAccessingSecurityScopedResource() } }
                     viewModel.importModel(at: url)
                 }
             case .failure(let error):
