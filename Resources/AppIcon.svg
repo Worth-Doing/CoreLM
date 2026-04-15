@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="100%" style="stop-color:#0f0f1a"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5b7cfa"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4dd9ac"/>
+      <stop offset="100%" style="stop-color:#5b7cfa"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#5b7cfa" flood-opacity="0.4"/>
+    </filter>
+    <filter id="innerGlow">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect x="32" y="32" width="960" height="960" rx="220" ry="220" fill="url(#bg)"/>
+  <rect x="32" y="32" width="960" height="960" rx="220" ry="220" fill="none" stroke="url(#glow)" stroke-width="3" opacity="0.4"/>
+
+  <!-- Subtle grid pattern -->
+  <g opacity="0.06" stroke="#5b7cfa" stroke-width="1">
+    <line x1="200" y1="32" x2="200" y2="992"/>
+    <line x1="370" y1="32" x2="370" y2="992"/>
+    <line x1="540" y1="32" x2="540" y2="992"/>
+    <line x1="710" y1="32" x2="710" y2="992"/>
+    <line x1="880" y1="32" x2="880" y2="992"/>
+    <line x1="32" y1="200" x2="992" y2="200"/>
+    <line x1="32" y1="370" x2="992" y2="370"/>
+    <line x1="32" y1="540" x2="992" y2="540"/>
+    <line x1="32" y1="710" x2="992" y2="710"/>
+    <line x1="32" y1="880" x2="992" y2="880"/>
+  </g>
+
+  <!-- Brain / neural network shape -->
+  <g filter="shadow" transform="translate(512, 480)">
+    <!-- Central brain outline -->
+    <g fill="none" stroke="url(#glow)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Left hemisphere -->
+      <path d="M-20,-160 C-120,-160 -200,-120 -220,-40 C-240,40 -200,100 -160,130 C-130,150 -100,170 -80,160 C-60,150 -50,120 -40,100" opacity="0.9"/>
+      <path d="M-40,-140 C-100,-130 -160,-80 -170,-20 C-180,40 -150,90 -120,110" opacity="0.7"/>
+      <path d="M-60,-110 C-100,-100 -130,-60 -130,-10 C-130,30 -110,70 -80,85" opacity="0.5"/>
+
+      <!-- Right hemisphere -->
+      <path d="M20,-160 C120,-160 200,-120 220,-40 C240,40 200,100 160,130 C130,150 100,170 80,160 C60,150 50,120 40,100" opacity="0.9"/>
+      <path d="M40,-140 C100,-130 160,-80 170,-20 C180,40 150,90 120,110" opacity="0.7"/>
+      <path d="M60,-110 C100,-100 130,-60 130,-10 C130,30 110,70 80,85" opacity="0.5"/>
+
+      <!-- Center connection -->
+      <path d="M0,-170 L0,150" stroke-dasharray="8,12" opacity="0.3"/>
+    </g>
+
+    <!-- Neural nodes -->
+    <g fill="url(#accent)">
+      <!-- Left nodes -->
+      <circle cx="-180" cy="-60" r="10" opacity="0.9"/>
+      <circle cx="-160" cy="40" r="8" opacity="0.8"/>
+      <circle cx="-120" cy="-100" r="7" opacity="0.7"/>
+      <circle cx="-100" cy="100" r="9" opacity="0.8"/>
+      <circle cx="-140" cy="-20" r="6" opacity="0.6"/>
+
+      <!-- Right nodes -->
+      <circle cx="180" cy="-60" r="10" opacity="0.9"/>
+      <circle cx="160" cy="40" r="8" opacity="0.8"/>
+      <circle cx="120" cy="-100" r="7" opacity="0.7"/>
+      <circle cx="100" cy="100" r="9" opacity="0.8"/>
+      <circle cx="140" cy="-20" r="6" opacity="0.6"/>
+
+      <!-- Center nodes -->
+      <circle cx="0" cy="-140" r="12" opacity="1.0"/>
+      <circle cx="0" cy="0" r="14" opacity="1.0"/>
+      <circle cx="0" cy="120" r="10" opacity="0.9"/>
+    </g>
+
+    <!-- Neural connections -->
+    <g stroke="url(#accent)" stroke-width="2" fill="none" opacity="0.4">
+      <line x1="-180" y1="-60" x2="0" y2="0"/>
+      <line x1="180" y1="-60" x2="0" y2="0"/>
+      <line x1="-120" y1="-100" x2="0" y2="-140"/>
+      <line x1="120" y1="-100" x2="0" y2="-140"/>
+      <line x1="-100" y1="100" x2="0" y2="120"/>
+      <line x1="100" y1="100" x2="0" y2="120"/>
+      <line x1="-160" y1="40" x2="0" y2="0"/>
+      <line x1="160" y1="40" x2="0" y2="0"/>
+      <line x1="0" y1="-140" x2="0" y2="0"/>
+      <line x1="0" y1="0" x2="0" y2="120"/>
+      <line x1="-180" y1="-60" x2="-120" y2="-100"/>
+      <line x1="180" y1="-60" x2="120" y2="-100"/>
+      <line x1="-160" y1="40" x2="-100" y2="100"/>
+      <line x1="160" y1="40" x2="100" y2="100"/>
+    </g>
+
+    <!-- Central glow -->
+    <circle cx="0" cy="0" r="20" fill="#5b7cfa" opacity="0.15"/>
+    <circle cx="0" cy="0" r="40" fill="#5b7cfa" opacity="0.06"/>
+  </g>
+
+  <!-- "CoreLM" text -->
+  <g transform="translate(512, 750)">
+    <text x="0" y="0" text-anchor="middle" font-family="-apple-system, SF Pro Display, Helvetica Neue, Arial" font-size="110" font-weight="700" letter-spacing="6">
+      <tspan fill="#e8e8e8">Core</tspan><tspan fill="url(#glow)">LM</tspan>
+    </text>
+    <text x="0" y="48" text-anchor="middle" font-family="-apple-system, SF Pro Display, Helvetica Neue, Arial" font-size="32" font-weight="400" fill="#8888aa" letter-spacing="12">
+      LOCAL AI STUDIO
+    </text>
+  </g>
+</svg>
