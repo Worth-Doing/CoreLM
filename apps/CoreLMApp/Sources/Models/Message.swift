@@ -1,0 +1,23 @@
+import Foundation
+
+struct Message: Identifiable, Codable {
+    let id: UUID
+    let role: Role
+    var content: String
+    let timestamp: Date
+    var tokenCount: Int?
+    var generationTime: TimeInterval?
+
+    enum Role: String, Codable {
+        case user
+        case assistant
+        case system
+    }
+
+    init(role: Role, content: String) {
+        self.id = UUID()
+        self.role = role
+        self.content = content
+        self.timestamp = Date()
+    }
+}
