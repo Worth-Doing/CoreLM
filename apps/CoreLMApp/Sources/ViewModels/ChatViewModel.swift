@@ -18,10 +18,14 @@ final class ChatViewModel {
 
     private let chatStore: ChatStore
     private let modelRegistry: ModelRegistry
+    private let runtime: CoreLMRuntime
 
-    init(chatStore: ChatStore, modelRegistry: ModelRegistry) {
+    private var generationTask: Task<Void, Never>?
+
+    init(chatStore: ChatStore, modelRegistry: ModelRegistry, runtime: CoreLMRuntime) {
         self.chatStore = chatStore
         self.modelRegistry = modelRegistry
+        self.runtime = runtime
     }
 
     var currentChat: Chat? {
@@ -40,7 +44,7 @@ final class ChatViewModel {
     var canSend: Bool {
         !promptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !isGenerating
-            && modelRegistry.loadedModelId != nil
+            && runtime.state == .ready
     }
 
     func selectChat(id: UUID) {
@@ -65,32 +69,59 @@ final class ChatViewModel {
         let userMessage = Message(role: .user, content: content)
         chatStore.appendMessage(chatId: chatId, message: userMessage)
 
-        // Placeholder: In Phase 3+, this will call the engine via the runtime bridge.
-        // For now, create a placeholder assistant message to demonstrate the UI flow.
         generationState = .generating
         streamingContent = ""
 
         let assistantMessage = Message(role: .assistant, content: "")
         chatStore.appendMessage(chatId: chatId, message: assistantMessage)
 
-        // Simulate streaming for UI development
-        simulateStreaming(chatId: chatId)
+        // Launch generation via the engine
+        generationTask = Task { [weak self] in
+            guard let self else { return }
+
+            do {
+                let stream = self.runtime.generate(prompt: content)
+                for try await token in stream {
+                    guard self.generationState == .generating else { break }
+                    self.streamingContent += token.text
+                    self.chatStore.updateLastMessage(chatId: chatId, content: self.streamingContent)
+                }
+            } catch {
+                if self.generationState == .generating {
+                    self.generationState = .error(error.localizedDescription)
+                    return
+                }
+            }
+
+            self.metrics = self.runtime.metrics
+            if self.generationState == .generating {
+                self.generationState = .idle
+            }
+            self.chatStore.save()
+        }
     }
 
     func stopGeneration() {
         generationState = .cancelled
+        runtime.cancelGeneration()
+        generationTask?.cancel()
+
+        // Let the state settle
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.generationState = .idle
+            self?.chatStore.save()
+        }
     }
 
     func regenerate() {
         guard let chatId = currentChatId else { return }
         guard let chat = currentChat, !chat.messages.isEmpty else { return }
 
-        // Find the last user message
         let userMessages = chat.messages.filter { $0.role == .user }
         guard let lastUserMessage = userMessages.last else { return }
 
-        // Clear context and re-send
         chatStore.clearMessages(chatId: chatId)
+        runtime.resetSession()
         promptText = lastUserMessage.content
         sendMessage()
     }
@@ -98,6 +129,7 @@ final class ChatViewModel {
     func clearContext() {
         guard let chatId = currentChatId else { return }
         chatStore.clearMessages(chatId: chatId)
+        runtime.resetSession()
         streamingContent = ""
         generationState = .idle
     }
@@ -111,37 +143,5 @@ final class ChatViewModel {
 
     func renameChat(id: UUID, title: String) {
         chatStore.renameChat(id: id, title: title)
-    }
-
-    // MARK: - Placeholder Streaming Simulation
-
-    private func simulateStreaming(chatId: UUID) {
-        let words = [
-            "This ", "is ", "a ", "placeholder ", "response. ",
-            "The ", "inference ", "engine ", "will ", "be ",
-            "connected ", "in ", "Phase ", "3. ",
-            "Token ", "streaming ", "will ", "appear ", "here."
-        ]
-        var index = 0
-
-        Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] timer in
-            guard let self else { timer.invalidate(); return }
-            guard self.generationState == .generating else {
-                timer.invalidate()
-                self.generationState = .idle
-                self.chatStore.save()
-                return
-            }
-
-            if index < words.count {
-                self.streamingContent += words[index]
-                self.chatStore.updateLastMessage(chatId: chatId, content: self.streamingContent)
-                index += 1
-            } else {
-                timer.invalidate()
-                self.generationState = .idle
-                self.chatStore.save()
-            }
-        }
     }
 }

@@ -1,0 +1,5 @@
+module CCoreLM {
+    header "corelm.h"
+    link "corelm"
+    export *
+}

@@ -3,31 +3,38 @@ import SwiftUI
 
 @Observable
 final class DiagnosticsViewModel {
-    var metrics: RuntimeMetrics = .empty
-
     private let modelRegistry: ModelRegistry
+    private let runtime: CoreLMRuntime
 
-    init(modelRegistry: ModelRegistry) {
+    init(modelRegistry: ModelRegistry, runtime: CoreLMRuntime) {
         self.modelRegistry = modelRegistry
+        self.runtime = runtime
+    }
+
+    var metrics: RuntimeMetrics {
+        runtime.metrics
     }
 
     var runtimeState: String {
-        if modelRegistry.loadedModelId != nil {
-            return "Ready"
+        switch runtime.state {
+        case .idle: return "Idle"
+        case .loading: return "Loading..."
+        case .ready: return "Ready"
+        case .generating: return "Generating"
+        case .error(let msg): return "Error: \(msg)"
         }
-        return "Idle"
     }
 
     var loadedModelName: String {
-        modelRegistry.loadedModel?.name ?? "None"
+        runtime.loadedModelInfo?.name ?? modelRegistry.loadedModel?.name ?? "None"
     }
 
     var backendName: String {
-        metrics.activeBackend.isEmpty ? "None" : metrics.activeBackend
+        let b = metrics.activeBackend
+        return b.isEmpty || b == "None" ? "CPU (Accelerate)" : b
     }
 
-    // Phase 3+: These will be populated by the runtime bridge
     var hasMetrics: Bool {
-        metrics.generationTokens > 0
+        metrics.generationTokens > 0 || metrics.promptEvalTokens > 0
     }
 }

@@ -4,6 +4,7 @@ struct ContentView: View {
     @Environment(ChatStore.self) private var chatStore
     @Environment(ModelRegistry.self) private var modelRegistry
     @Environment(SettingsStore.self) private var settingsStore
+    @Environment(CoreLMRuntime.self) private var runtime
 
     @State private var selectedSection: SidebarSection = .chats
     @State private var selectedChatId: UUID?
@@ -62,9 +63,9 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            chatViewModel = ChatViewModel(chatStore: chatStore, modelRegistry: modelRegistry)
-            modelListViewModel = ModelListViewModel(modelRegistry: modelRegistry)
-            diagnosticsViewModel = DiagnosticsViewModel(modelRegistry: modelRegistry)
+            chatViewModel = ChatViewModel(chatStore: chatStore, modelRegistry: modelRegistry, runtime: runtime)
+            modelListViewModel = ModelListViewModel(modelRegistry: modelRegistry, runtime: runtime)
+            diagnosticsViewModel = DiagnosticsViewModel(modelRegistry: modelRegistry, runtime: runtime)
             settingsViewModel = SettingsViewModel(store: settingsStore)
         }
         .onReceive(NotificationCenter.default.publisher(for: .newChat)) { _ in

@@ -5,6 +5,7 @@ struct CoreLMApp: App {
     @State private var chatStore = ChatStore()
     @State private var modelRegistry = ModelRegistry()
     @State private var settingsStore = SettingsStore()
+    @State private var runtime = CoreLMRuntime()
 
     var body: some Scene {
         WindowGroup {
@@ -12,6 +13,7 @@ struct CoreLMApp: App {
                 .environment(chatStore)
                 .environment(modelRegistry)
                 .environment(settingsStore)
+                .environment(runtime)
                 .frame(minWidth: 900, minHeight: 600)
         }
         .windowStyle(.titleBar)

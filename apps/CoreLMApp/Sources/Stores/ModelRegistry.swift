@@ -46,6 +46,13 @@ final class ModelRegistry {
         return model
     }
 
+    func updateModel(_ model: ModelInfo) {
+        if let index = models.firstIndex(where: { $0.id == model.id }) {
+            models[index] = model
+            save()
+        }
+    }
+
     func removeModel(id: UUID) {
         models.removeAll { $0.id == id }
         if loadedModelId == id { loadedModelId = nil }

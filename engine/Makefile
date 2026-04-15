@@ -1,5 +1,5 @@
 CXX = clang++
-CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -ffast-math
+CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -ffast-math -mmacosx-version-min=14.0
 FRAMEWORKS = -framework Accelerate
 INCLUDES = -I include -I core
 
