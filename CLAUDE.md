@@ -34,7 +34,7 @@ Native macOS application for local LLM inference with a custom Mac-first inferen
 - Phase 4: Full chat integration — COMPLETE (merged into Phase 3)
 - Phase 5: Metal backend — COMPLETE
 - Phase 6: Mac-first optimization — COMPLETE
-- Phase 7: Product polish
+- Phase 7: Product polish — COMPLETE (notarized DMG shipped)
 
 ## Rules
 
