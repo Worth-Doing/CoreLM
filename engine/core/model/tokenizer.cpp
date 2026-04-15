@@ -133,9 +133,10 @@ std::vector<int32_t> Tokenizer::encode(const std::string& text, bool add_bos) co
 std::string Tokenizer::decode(int32_t token_id) const {
     if (token_id < 0 || token_id >= (int32_t)vocab_.size()) return "";
 
-    // Skip control tokens in output
-    if (token_types_.size() > (size_t)token_id && token_types_[token_id] == 3) {
-        return ""; // control token
+    // Skip control tokens (type 3 = control in some tokenizers)
+    // But only skip BOS/EOS/PAD, not user-defined tokens
+    if (token_id == bos_id_ || token_id == eos_id_) {
+        return "";
     }
 
     std::string token = vocab_[token_id];
@@ -172,7 +173,17 @@ std::string Tokenizer::decode(const std::vector<int32_t>& tokens) const {
 }
 
 bool Tokenizer::is_eos(int32_t token_id) const {
-    return token_id == eos_id_;
+    if (token_id == eos_id_) return true;
+
+    // Check for alternative end tokens (LLaMA 3 uses special tokens)
+    if (token_id >= 0 && token_id < (int32_t)vocab_.size()) {
+        const auto& tok = vocab_[token_id];
+        if (tok == "<|eot_id|>" || tok == "<|end_of_text|>" ||
+            tok == "<|im_end|>" || tok == "</s>") {
+            return true;
+        }
+    }
+    return false;
 }
 
 void Tokenizer::bpe_merge(std::vector<std::string>& tokens) const {

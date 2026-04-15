@@ -14,37 +14,61 @@ static double now_ms() {
 
 // ── Weight mapping ─────────────────────────────────────────
 
-static Tensor tensor_from_gguf(const GGUFFile& gguf, const std::string& name) {
+static Shape gguf_shape(const GGUFTensorInfo* ti) {
+    // GGUF stores dimensions in column-major order (innermost first):
+    //   1D [n]        → Shape(n)
+    //   2D [cols,rows] → Shape(rows, cols) for our row-major convention
+    if (ti->ndim == 1) {
+        return Shape(ti->shape[0]);
+    } else if (ti->ndim == 2) {
+        return Shape(ti->shape[1], ti->shape[0]);
+    } else if (ti->ndim == 3) {
+        return Shape(ti->shape[2], ti->shape[1], ti->shape[0]);
+    } else {
+        Shape shape;
+        shape.ndim = ti->ndim;
+        for (int d = 0; d < (int)ti->ndim; d++) {
+            shape.dims[d] = ti->shape[ti->ndim - 1 - d];
+        }
+        return shape;
+    }
+}
+
+static DType gguf_to_dtype(GGUFDType gdt) {
+    switch (gdt) {
+        case GGUFDType::F32:  return DType::F32;
+        case GGUFDType::F16:  return DType::F16;
+        case GGUFDType::Q4_0: return DType::Q4_0;
+        case GGUFDType::Q8_0: return DType::Q8_0;
+        default:              return DType::F32;
+    }
+}
+
+// Convert F16 tensor to F32 (allocates new storage)
+static Tensor f16_to_f32_tensor(const void* data, Shape shape) {
+    int64_t n = shape.numel();
+    Tensor out = Tensor::alloc(shape, DType::F32);
+    const uint16_t* src = static_cast<const uint16_t*>(data);
+    float* dst = out.data_f32();
+    for (int64_t i = 0; i < n; i++) {
+        dst[i] = f16_to_f32(src[i]);
+    }
+    return out;
+}
+
+static Tensor tensor_from_gguf(const GGUFFile& gguf, const std::string& name, bool force_f32 = false) {
     auto* ti = gguf.find_tensor(name);
     if (!ti) return Tensor();
 
     const void* data = gguf.tensor_data(name);
     if (!data) return Tensor();
 
-    // GGUF stores dimensions in column-major order (innermost first):
-    //   1D [n]        → Shape(n)
-    //   2D [cols,rows] → Shape(rows, cols) for our row-major convention
-    Shape shape;
-    if (ti->ndim == 1) {
-        shape = Shape(ti->shape[0]);
-    } else if (ti->ndim == 2) {
-        shape = Shape(ti->shape[1], ti->shape[0]); // swap: rows, cols
-    } else if (ti->ndim == 3) {
-        shape = Shape(ti->shape[2], ti->shape[1], ti->shape[0]);
-    } else {
-        shape.ndim = ti->ndim;
-        for (int d = 0; d < (int)ti->ndim; d++) {
-            shape.dims[d] = ti->shape[ti->ndim - 1 - d]; // reverse
-        }
-    }
+    Shape shape = gguf_shape(ti);
+    DType dtype = gguf_to_dtype(ti->dtype);
 
-    DType dtype;
-    switch (ti->dtype) {
-        case GGUFDType::F32:  dtype = DType::F32; break;
-        case GGUFDType::F16:  dtype = DType::F16; break;
-        case GGUFDType::Q4_0: dtype = DType::Q4_0; break;
-        case GGUFDType::Q8_0: dtype = DType::Q8_0; break;
-        default: dtype = DType::F32; break;
+    // If the tensor is F16 and we need F32, convert it
+    if (force_f32 && dtype == DType::F16) {
+        return f16_to_f32_tensor(data, shape);
     }
 
     return Tensor::wrap_const(data, shape, dtype);
@@ -58,8 +82,8 @@ bool LlamaModel::map_weights(const GGUFFile& gguf, std::string& error) {
         return false;
     }
 
-    // Output norm
-    weights_.output_norm = tensor_from_gguf(gguf, "output_norm.weight");
+    // Output norm — must be F32 for vDSP operations
+    weights_.output_norm = tensor_from_gguf(gguf, "output_norm.weight", /*force_f32=*/true);
     if (!weights_.output_norm.data()) {
         error = "missing output_norm.weight";
         return false;
@@ -78,8 +102,9 @@ bool LlamaModel::map_weights(const GGUFFile& gguf, std::string& error) {
         auto& lw = weights_.layers[l];
         std::string prefix = "blk." + std::to_string(l) + ".";
 
-        lw.attn_norm = tensor_from_gguf(gguf, prefix + "attn_norm.weight");
-        lw.ffn_norm  = tensor_from_gguf(gguf, prefix + "ffn_norm.weight");
+        // Norm weights must be F32 for vDSP
+        lw.attn_norm = tensor_from_gguf(gguf, prefix + "attn_norm.weight", /*force_f32=*/true);
+        lw.ffn_norm  = tensor_from_gguf(gguf, prefix + "ffn_norm.weight", /*force_f32=*/true);
         lw.wq       = tensor_from_gguf(gguf, prefix + "attn_q.weight");
         lw.wk       = tensor_from_gguf(gguf, prefix + "attn_k.weight");
         lw.wv       = tensor_from_gguf(gguf, prefix + "attn_v.weight");
