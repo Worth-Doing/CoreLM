@@ -10,6 +10,7 @@ SRCS = \
 	core/model/gguf.cpp \
 	core/model/model_config.cpp \
 	core/model/tokenizer.cpp \
+	core/model/dequant.cpp \
 	core/kv_cache/kv_cache.cpp \
 	core/sampling/sampler.cpp \
 	core/backends/cpu/cpu_ops.cpp \

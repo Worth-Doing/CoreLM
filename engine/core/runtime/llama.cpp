@@ -1,8 +1,10 @@
 #include "llama.h"
 #include "../backends/backend.h"
 #include "../backends/cpu/cpu_ops.h"
+#include "../model/dequant.h"
 #include <mach/mach_time.h>
 #include <cstring>
+#include <cstdio>
 
 namespace corelm {
 
@@ -14,14 +16,12 @@ static double now_ms() {
 
 // ── Weight mapping ─────────────────────────────────────────
 
+// Compute row-major shape from GGUF column-major shape
 static Shape gguf_shape(const GGUFTensorInfo* ti) {
-    // GGUF stores dimensions in column-major order (innermost first):
-    //   1D [n]        → Shape(n)
-    //   2D [cols,rows] → Shape(rows, cols) for our row-major convention
     if (ti->ndim == 1) {
         return Shape(ti->shape[0]);
     } else if (ti->ndim == 2) {
-        return Shape(ti->shape[1], ti->shape[0]);
+        return Shape(ti->shape[1], ti->shape[0]); // swap to row-major
     } else if (ti->ndim == 3) {
         return Shape(ti->shape[2], ti->shape[1], ti->shape[0]);
     } else {
@@ -34,29 +34,9 @@ static Shape gguf_shape(const GGUFTensorInfo* ti) {
     }
 }
 
-static DType gguf_to_dtype(GGUFDType gdt) {
-    switch (gdt) {
-        case GGUFDType::F32:  return DType::F32;
-        case GGUFDType::F16:  return DType::F16;
-        case GGUFDType::Q4_0: return DType::Q4_0;
-        case GGUFDType::Q8_0: return DType::Q8_0;
-        default:              return DType::F32;
-    }
-}
-
-// Convert F16 tensor to F32 (allocates new storage)
-static Tensor f16_to_f32_tensor(const void* data, Shape shape) {
-    int64_t n = shape.numel();
-    Tensor out = Tensor::alloc(shape, DType::F32);
-    const uint16_t* src = static_cast<const uint16_t*>(data);
-    float* dst = out.data_f32();
-    for (int64_t i = 0; i < n; i++) {
-        dst[i] = f16_to_f32(src[i]);
-    }
-    return out;
-}
-
-static Tensor tensor_from_gguf(const GGUFFile& gguf, const std::string& name, bool force_f32 = false) {
+// Load a tensor from GGUF, dequantizing ALL types to F32.
+// This guarantees correctness regardless of quantization format.
+static Tensor tensor_from_gguf(const GGUFFile& gguf, const std::string& name) {
     auto* ti = gguf.find_tensor(name);
     if (!ti) return Tensor();
 
@@ -64,14 +44,32 @@ static Tensor tensor_from_gguf(const GGUFFile& gguf, const std::string& name, bo
     if (!data) return Tensor();
 
     Shape shape = gguf_shape(ti);
-    DType dtype = gguf_to_dtype(ti->dtype);
+    int64_t numel = shape.numel();
 
-    // If the tensor is F16 and we need F32, convert it
-    if (force_f32 && dtype == DType::F16) {
-        return f16_to_f32_tensor(data, shape);
+    // F32: wrap directly (no copy)
+    if (ti->dtype == GGUFDType::F32) {
+        return Tensor::wrap_const(data, shape, DType::F32);
     }
 
-    return Tensor::wrap_const(data, shape, dtype);
+    // All other types: dequantize to F32
+    if (!is_dtype_supported(ti->dtype)) {
+        fprintf(stderr, "[CoreLM] Warning: tensor '%s' has unsupported type %d, skipping\n",
+                name.c_str(), (int)ti->dtype);
+        return Tensor();
+    }
+
+    // Dequantize to a flat F32 buffer, then reshape
+    Tensor flat = dequantize_to_f32(data, numel, ti->dtype);
+
+    // Reshape: the dequantized tensor is Shape(numel), we need the proper 2D shape
+    if (shape.ndim == 1) {
+        return flat; // already correct
+    }
+
+    // For 2D+, we need to re-wrap with the correct shape
+    Tensor reshaped = Tensor::alloc(shape, DType::F32);
+    std::memcpy(reshaped.data(), flat.data(), numel * sizeof(float));
+    return reshaped;
 }
 
 bool LlamaModel::map_weights(const GGUFFile& gguf, std::string& error) {
@@ -82,8 +80,8 @@ bool LlamaModel::map_weights(const GGUFFile& gguf, std::string& error) {
         return false;
     }
 
-    // Output norm — must be F32 for vDSP operations
-    weights_.output_norm = tensor_from_gguf(gguf, "output_norm.weight", /*force_f32=*/true);
+    // Output norm
+    weights_.output_norm = tensor_from_gguf(gguf, "output_norm.weight");
     if (!weights_.output_norm.data()) {
         error = "missing output_norm.weight";
         return false;
@@ -102,9 +100,8 @@ bool LlamaModel::map_weights(const GGUFFile& gguf, std::string& error) {
         auto& lw = weights_.layers[l];
         std::string prefix = "blk." + std::to_string(l) + ".";
 
-        // Norm weights must be F32 for vDSP
-        lw.attn_norm = tensor_from_gguf(gguf, prefix + "attn_norm.weight", /*force_f32=*/true);
-        lw.ffn_norm  = tensor_from_gguf(gguf, prefix + "ffn_norm.weight", /*force_f32=*/true);
+        lw.attn_norm = tensor_from_gguf(gguf, prefix + "attn_norm.weight");
+        lw.ffn_norm  = tensor_from_gguf(gguf, prefix + "ffn_norm.weight");
         lw.wq       = tensor_from_gguf(gguf, prefix + "attn_q.weight");
         lw.wk       = tensor_from_gguf(gguf, prefix + "attn_k.weight");
         lw.wv       = tensor_from_gguf(gguf, prefix + "attn_v.weight");
