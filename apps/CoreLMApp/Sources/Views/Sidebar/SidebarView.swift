@@ -34,10 +34,15 @@ struct SidebarView: View {
                 }
             }
 
-            Section("Tools") {
-                Label("Models", systemImage: SidebarSection.models.icon)
-                    .tag(SidebarSection.models)
+            Section("Models") {
+                Label("Browse Models", systemImage: SidebarSection.browse.icon)
+                    .tag(SidebarSection.browse)
 
+                Label("My Models", systemImage: SidebarSection.models.icon)
+                    .tag(SidebarSection.models)
+            }
+
+            Section("Tools") {
                 Label("Diagnostics", systemImage: SidebarSection.diagnostics.icon)
                     .tag(SidebarSection.diagnostics)
 

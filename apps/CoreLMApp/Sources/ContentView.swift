@@ -86,10 +86,12 @@ struct ContentView: View {
                         chatViewModel?.newChat()
                     },
                     onImportModel: {
-                        selectedSection = .models
+                        selectedSection = .browse
                     }
                 )
             }
+        case .browse:
+            ModelBrowserScreen()
         case .models:
             if let vm = modelListViewModel {
                 ModelListScreen(viewModel: vm)
@@ -112,6 +114,10 @@ struct ContentView: View {
             if let vm = chatViewModel {
                 ChatInspector(viewModel: vm, modelRegistry: modelRegistry)
             }
+        case .browse:
+            Text("Browse HuggingFace")
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .models:
             if let model = modelListViewModel?.models.first(where: { modelRegistry.loadedModelId == $0.id }) {
                 ModelInspector(model: model)
@@ -134,7 +140,8 @@ struct ContentView: View {
 
 enum SidebarSection: String, CaseIterable, Identifiable {
     case chats = "Chats"
-    case models = "Models"
+    case browse = "Browse Models"
+    case models = "My Models"
     case diagnostics = "Diagnostics"
     case settings = "Settings"
 
@@ -143,6 +150,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .chats: return "bubble.left.and.bubble.right"
+        case .browse: return "globe"
         case .models: return "cube"
         case .diagnostics: return "gauge.with.dots.needle.33percent"
         case .settings: return "gear"
