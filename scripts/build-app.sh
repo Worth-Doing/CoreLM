@@ -28,8 +28,9 @@ make lib 2>&1 | tail -1
 echo "      Engine built."
 
 # ── 2. Build Swift app (release) ─────────────────────────────
-echo "[2/5] Building Swift app (release)..."
+echo "[2/5] Building Swift app (release, clean)..."
 cd "$APP_DIR"
+swift package clean 2>/dev/null
 swift build -c release 2>&1 | tail -1
 SWIFT_BIN=$(swift build -c release --show-bin-path 2>/dev/null)/CoreLMApp
 echo "      Swift binary: $SWIFT_BIN"
