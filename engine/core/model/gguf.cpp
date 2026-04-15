@@ -9,7 +9,7 @@
 namespace corelm {
 
 // GGUF format constants
-static constexpr uint32_t GGUF_MAGIC = 0x46475547; // "GGUF" in little-endian
+static constexpr uint32_t GGUF_MAGIC = 0x46554747; // "GGUF" as little-endian uint32: G(0x47) G(0x47) U(0x55) F(0x46)
 static constexpr uint32_t GGUF_VERSION_3 = 3;
 
 size_t gguf_dtype_block_size(GGUFDType dt) {
