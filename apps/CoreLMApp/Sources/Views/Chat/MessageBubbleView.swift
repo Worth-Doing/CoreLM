@@ -17,10 +17,7 @@ struct MessageBubbleView: View {
                     .font(Theme.captionFont)
                     .foregroundStyle(Theme.secondaryText)
 
-                Text(message.content)
-                    .font(Theme.bodyFont)
-                    .textSelection(.enabled)
-                    .lineSpacing(4)
+                MarkdownContentView(text: message.content)
 
                 if isHovering {
                     HStack(spacing: Theme.spacing) {

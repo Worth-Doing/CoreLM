@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="coreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="nodeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5576c;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4facfe;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:0.3" />
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect x="0" y="0" width="1024" height="1024" rx="224" ry="224" fill="url(#bgGrad)"/>
+
+  <!-- Subtle outer ring -->
+  <circle cx="512" cy="512" r="380" fill="none" stroke="url(#ringGrad)" stroke-width="2" opacity="0.4"/>
+  <circle cx="512" cy="512" r="340" fill="none" stroke="url(#ringGrad)" stroke-width="1" opacity="0.2"/>
+
+  <!-- Neural network connections (subtle lines) -->
+  <!-- Layer 1 to core -->
+  <line x1="280" y1="350" x2="440" y2="460" stroke="#667eea" stroke-width="2" opacity="0.3"/>
+  <line x1="280" y1="512" x2="440" y2="512" stroke="#667eea" stroke-width="2" opacity="0.35"/>
+  <line x1="280" y1="674" x2="440" y2="564" stroke="#667eea" stroke-width="2" opacity="0.3"/>
+
+  <!-- Core to layer 2 -->
+  <line x1="584" y1="460" x2="744" y2="350" stroke="#764ba2" stroke-width="2" opacity="0.3"/>
+  <line x1="584" y1="512" x2="744" y2="512" stroke="#764ba2" stroke-width="2" opacity="0.35"/>
+  <line x1="584" y1="564" x2="744" y2="674" stroke="#764ba2" stroke-width="2" opacity="0.3"/>
+
+  <!-- Central core: stylized brain/processor -->
+  <circle cx="512" cy="512" r="100" fill="url(#coreGrad)" opacity="0.9"/>
+  <circle cx="512" cy="512" r="72" fill="none" stroke="white" stroke-width="2" opacity="0.3"/>
+
+  <!-- Inner core detail — abstract circuit pattern -->
+  <path d="M 490 470 L 490 512 L 534 512 L 534 554" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.7"/>
+  <path d="M 534 470 L 534 490 L 490 490" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+  <path d="M 490 534 L 534 534" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Core pulse dots -->
+  <circle cx="490" cy="470" r="5" fill="white" opacity="0.8"/>
+  <circle cx="534" cy="470" r="4" fill="white" opacity="0.6"/>
+  <circle cx="534" cy="554" r="5" fill="white" opacity="0.8"/>
+  <circle cx="490" cy="534" r="4" fill="white" opacity="0.6"/>
+
+  <!-- Input nodes (left) -->
+  <circle cx="280" cy="350" r="18" fill="url(#nodeGrad)" opacity="0.7"/>
+  <circle cx="280" cy="512" r="22" fill="url(#nodeGrad)" opacity="0.8"/>
+  <circle cx="280" cy="674" r="18" fill="url(#nodeGrad)" opacity="0.7"/>
+
+  <!-- Output nodes (right) -->
+  <circle cx="744" cy="350" r="18" fill="url(#nodeGrad)" opacity="0.7"/>
+  <circle cx="744" cy="512" r="22" fill="url(#nodeGrad)" opacity="0.8"/>
+  <circle cx="744" cy="674" r="18" fill="url(#nodeGrad)" opacity="0.7"/>
+
+  <!-- "LM" text in core -->
+  <text x="512" y="525" text-anchor="middle" font-family="-apple-system, SF Pro Display, Helvetica Neue" font-size="48" font-weight="700" fill="white" letter-spacing="4" opacity="0.9">LM</text>
+</svg>

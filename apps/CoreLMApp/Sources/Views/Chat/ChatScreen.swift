@@ -4,13 +4,15 @@ struct ChatScreen: View {
     @Bindable var viewModel: ChatViewModel
 
     @Environment(ModelRegistry.self) private var modelRegistry
+    @State private var selectedPreset = GenerationPreset.builtIn[0]
 
     var body: some View {
         VStack(spacing: 0) {
             // Header
             ChatHeaderBar(
                 modelName: modelRegistry.loadedModel?.name ?? "No model",
-                quantization: modelRegistry.loadedModel?.quantization
+                quantization: modelRegistry.loadedModel?.quantization,
+                selectedPreset: $selectedPreset
             )
 
             Divider()
@@ -62,6 +64,7 @@ struct ChatScreen: View {
 struct ChatHeaderBar: View {
     let modelName: String
     let quantization: String?
+    @Binding var selectedPreset: GenerationPreset
 
     var body: some View {
         HStack {
@@ -82,6 +85,29 @@ struct ChatHeaderBar: View {
             }
 
             Spacer()
+
+            // Preset picker
+            Menu {
+                ForEach(GenerationPreset.builtIn) { preset in
+                    Button {
+                        selectedPreset = preset
+                    } label: {
+                        Label(preset.name, systemImage: preset.icon)
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: selectedPreset.icon)
+                        .font(.system(size: 11))
+                    Text(selectedPreset.name)
+                        .font(Theme.captionFont)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Theme.secondaryBackground)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall))
+            }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal)
         .padding(.vertical, Theme.spacing)
