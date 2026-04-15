@@ -20,6 +20,8 @@ let package = Package(
                     "-lc++",
                 ]),
                 .linkedFramework("Accelerate"),
+                .linkedFramework("Metal"),
+                .linkedFramework("Foundation"),
             ]
         ),
         .executableTarget(

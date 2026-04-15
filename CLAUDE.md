@@ -30,7 +30,7 @@ Native macOS application for local LLM inference with a custom Mac-first inferen
 - Phase 0: Architecture & planning (docs/) — COMPLETE
 - Phase 1: App skeleton (SwiftUI shell, no inference) — COMPLETE
 - Phase 2: Engine CPU reference core — COMPLETE (16/16 tests passing)
-- Phase 3: Swift ↔ Engine bridge
+- Phase 3: Swift ↔ Engine bridge — COMPLETE
 - Phase 4: Full chat integration
 - Phase 5: Metal backend
 - Phase 6: Mac-first optimization

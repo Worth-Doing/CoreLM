@@ -1,4 +1,5 @@
 #include "llama.h"
+#include "../backends/backend.h"
 #include "../backends/cpu/cpu_ops.h"
 #include <mach/mach_time.h>
 #include <cstring>
@@ -147,12 +148,24 @@ bool LlamaModel::load(const std::string& path, std::string& error) {
         return false;
     }
 
+    // Advise kernel on model memory access pattern
+    if (gguf_->data_base && gguf_->file_size > 0) {
+        cpu::advise_sequential(gguf_->data_base, gguf_->file_size);
+        cpu::advise_willneed(gguf_->data_base, gguf_->file_size);
+    }
+
     // Allocate scratch
     alloc_scratch();
 
     // Initialize KV cache
     kv_cache_.init(config_.num_layers, config_.max_context_length,
                    config_.num_kv_heads, config_.head_dim);
+
+    // Initialize backend
+    backend_ = create_backend(requested_backend_);
+    if (!backend_) {
+        backend_ = std::make_unique<CPUBackend>();
+    }
 
     loaded_ = true;
     metrics_.model_load_ms = now_ms() - t0;
@@ -165,6 +178,16 @@ bool LlamaModel::load(const std::string& path, std::string& error) {
     return true;
 }
 
+void LlamaModel::set_backend(const std::string& name) {
+    requested_backend_ = name;
+    if (loaded_) {
+        backend_ = create_backend(name);
+        if (!backend_) {
+            backend_ = std::make_unique<CPUBackend>();
+        }
+    }
+}
+
 // ── Forward pass (single token) ─────────────────────────────
 
 void LlamaModel::forward(int token_id, int pos) {
@@ -174,27 +197,30 @@ void LlamaModel::forward(int token_id, int pos) {
     int gqa = config_.gqa_ratio();
 
     // 1. Token embedding
-    cpu::embedding_lookup(weights_.token_embedding, token_id, x_);
+    backend_->embedding_lookup(weights_.token_embedding, token_id, x_);
 
     // 2. Transformer layers
     for (uint32_t l = 0; l < config_.num_layers; l++) {
         auto& lw = weights_.layers[l];
 
         // ── Pre-attention RMSNorm ──
-        cpu::rmsnorm(x_, lw.attn_norm, xb_, config_.rms_norm_eps);
+        backend_->rmsnorm(x_, lw.attn_norm, xb_, config_.rms_norm_eps);
 
         // ── QKV projections ──
-        cpu::matvec(lw.wq, xb_, q_);
-        cpu::matvec(lw.wk, xb_, k_);
-        cpu::matvec(lw.wv, xb_, v_);
+        backend_->matvec(lw.wq, xb_, q_);
+        backend_->matvec(lw.wk, xb_, k_);
+        backend_->matvec(lw.wv, xb_, v_);
 
         // ── RoPE ──
-        cpu::rope(q_.data_f32(), k_.data_f32(), hd, nh, nkv, pos, config_.rope_theta);
+        backend_->rope(q_.data_f32(), k_.data_f32(), hd, nh, nkv, pos, config_.rope_theta);
 
         // ── Update KV cache ──
         kv_cache_.update(l, pos, k_.data_f32(), v_.data_f32());
 
         // ── Multi-head attention ──
+        // Attention score computation stays on CPU — it's memory-bound and
+        // the KV cache is already in CPU memory. GPU dispatch overhead
+        // would hurt more than help for single-token generation.
         int seq_len = pos + 1;
         float scale = 1.0f / sqrtf((float)hd);
 
@@ -215,7 +241,7 @@ void LlamaModel::forward(int token_id, int pos) {
             }
 
             // Softmax
-            cpu::softmax_inplace(att_scores, seq_len);
+            backend_->softmax(att_scores, seq_len);
 
             // Weighted sum of values
             float* xb_head = xb_.data_f32() + head * hd;
@@ -231,34 +257,34 @@ void LlamaModel::forward(int token_id, int pos) {
         }
 
         // ── Attention output projection ──
-        cpu::matvec(lw.wo, xb_, xb2_);
+        backend_->matvec(lw.wo, xb_, xb2_);
 
         // ── Residual connection ──
-        cpu::add_inplace(x_, xb2_);
+        backend_->add_inplace(x_, xb2_);
 
         // ── Pre-FFN RMSNorm ──
-        cpu::rmsnorm(x_, lw.ffn_norm, xb_, config_.rms_norm_eps);
+        backend_->rmsnorm(x_, lw.ffn_norm, xb_, config_.rms_norm_eps);
 
         // ── FFN: SwiGLU ──
-        cpu::matvec(lw.w_gate, xb_, ffn_gate_);
-        cpu::matvec(lw.w_up,   xb_, ffn_up_);
+        backend_->matvec(lw.w_gate, xb_, ffn_gate_);
+        backend_->matvec(lw.w_up,   xb_, ffn_up_);
 
         // SiLU(gate) * up
-        cpu::silu_inplace(ffn_gate_);
-        cpu::mul_inplace(ffn_gate_, ffn_up_);
+        backend_->silu_inplace(ffn_gate_);
+        backend_->mul_inplace(ffn_gate_, ffn_up_);
 
         // Down projection
-        cpu::matvec(lw.w_down, ffn_gate_, ffn_down_);
+        backend_->matvec(lw.w_down, ffn_gate_, ffn_down_);
 
         // ── Residual connection ──
-        cpu::add_inplace(x_, ffn_down_);
+        backend_->add_inplace(x_, ffn_down_);
     }
 
     // 3. Final RMSNorm
-    cpu::rmsnorm(x_, weights_.output_norm, xb_, config_.rms_norm_eps);
+    backend_->rmsnorm(x_, weights_.output_norm, xb_, config_.rms_norm_eps);
 
     // 4. LM head: logits = output_weight @ x
-    cpu::matvec(weights_.output, xb_, logits_);
+    backend_->matvec(weights_.output, xb_, logits_);
 }
 
 // ── Forward batch (prompt evaluation) ───────────────────────

@@ -56,5 +56,11 @@ float dot_q4_0_block(const BlockQ4_0* block, const float* x);
 // Copy embedding row: out[hidden] = embedding_table[token_id * hidden, ...]
 void embedding_lookup(const Tensor& table, int token_id, Tensor& out);
 
+// ── Memory hints ─────────────────────────────────────────────
+
+// Advise kernel on memory access patterns for mmap'd weights
+void advise_sequential(const void* addr, size_t len);
+void advise_willneed(const void* addr, size_t len);
+
 } // namespace cpu
 } // namespace corelm

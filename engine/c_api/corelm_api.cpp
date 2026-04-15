@@ -30,7 +30,6 @@ struct clm_session_impl {
     clm_model_impl* model_ref = nullptr;
     uint32_t context_size = 0;
     uint32_t batch_size = 512;
-    std::string backend_name = "CPU (Accelerate)";
 };
 
 // ── Context ─────────────────────────────────────────────────
@@ -70,6 +69,7 @@ clm_status_t clm_model_load(clm_context_t ctx, const char* file_path, clm_model_
 
     auto* m = new clm_model_impl();
     m->model = std::make_shared<LlamaModel>();
+    m->model->set_backend(ctx->backend);
 
     std::string error;
     if (!m->model->load(file_path, error)) {
@@ -250,7 +250,10 @@ clm_status_t clm_get_metrics(clm_session_t session, clm_metrics_t* out_metrics) 
     out_metrics->memory_scratch_bytes   = m.memory_scratch;
     out_metrics->context_tokens_used    = m.context_used;
     out_metrics->context_tokens_max     = m.context_max;
-    out_metrics->active_backend         = session->backend_name.c_str();
+    // Get backend name from the model's active backend
+    static std::string backend_str;
+    backend_str = session->model_ref->model->backend_name();
+    out_metrics->active_backend = backend_str.c_str();
 
     return CLM_STATUS_OK;
 }

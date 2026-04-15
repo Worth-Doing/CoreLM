@@ -6,11 +6,13 @@
 #include "../tensor/tensor.h"
 #include "../kv_cache/kv_cache.h"
 #include "../sampling/sampler.h"
+#include "../backends/backend.h"
 
 #include <string>
 #include <vector>
 #include <functional>
 #include <atomic>
+#include <memory>
 
 namespace corelm {
 
@@ -81,11 +83,15 @@ public:
     // Reset KV cache / session state
     void reset_session();
 
+    // Set backend (must be called before load, or uses auto)
+    void set_backend(const std::string& backend_name);
+
     // Accessors
     const ModelConfig& config() const { return config_; }
     const Tokenizer& tokenizer() const { return tokenizer_; }
     const InferenceMetrics& metrics() const { return metrics_; }
     bool is_loaded() const { return loaded_; }
+    std::string backend_name() const { return backend_ ? backend_->name() : "none"; }
 
 private:
     // Forward pass for a single token at position `pos`
@@ -121,6 +127,10 @@ private:
 
     bool loaded_ = false;
     std::atomic<bool> cancelled_{false};
+    std::string requested_backend_ = "auto";
+
+    // Backend
+    std::unique_ptr<Backend> backend_;
 
     // GGUF file handle (keeps mmap alive)
     std::unique_ptr<GGUFFile> gguf_;
