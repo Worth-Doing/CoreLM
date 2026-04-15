@@ -3,6 +3,7 @@
 *.a
 *.dylib
 build/
+engine/build/
 .build/
 DerivedData/
 *.xcodeproj
