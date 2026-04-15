@@ -1,0 +1,13 @@
+.DS_Store
+*.o
+*.a
+*.dylib
+build/
+.build/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+*.swp
+*~
+.vscode/
+.idea/
