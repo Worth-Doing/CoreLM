@@ -265,23 +265,34 @@ const void* GGUFFile::tensor_data(const std::string& name) const {
 
 // Main parser
 
-// RAII wrapper for mmap'd file
-struct MappedFile {
-    void*  data = MAP_FAILED;
-    size_t size = 0;
-    int    fd   = -1;
+// MappedFile implementation
+MappedFile::~MappedFile() {
+    if (data && data != MAP_FAILED) munmap(data, size);
+    if (fd >= 0) close(fd);
+}
 
-    ~MappedFile() {
-        if (data != MAP_FAILED) munmap(data, size);
+MappedFile::MappedFile(MappedFile&& other) noexcept
+    : data(other.data), size(other.size), fd(other.fd) {
+    other.data = nullptr;
+    other.size = 0;
+    other.fd = -1;
+}
+
+MappedFile& MappedFile::operator=(MappedFile&& other) noexcept {
+    if (this != &other) {
+        if (data && data != MAP_FAILED) munmap(data, size);
         if (fd >= 0) close(fd);
+        data = other.data; size = other.size; fd = other.fd;
+        other.data = nullptr; other.size = 0; other.fd = -1;
     }
-};
+    return *this;
+}
 
 GGUFParseResult gguf_parse(const std::string& path) {
     GGUFParseResult result;
 
     // Open and mmap
-    auto mapped = std::make_shared<MappedFile>();
+    auto mapped = std::make_unique<MappedFile>();
     mapped->fd = open(path.c_str(), O_RDONLY);
     if (mapped->fd < 0) {
         result.error = "cannot open file: " + path;
@@ -359,15 +370,8 @@ GGUFParseResult gguf_parse(const std::string& path) {
         reader.align(32);
         file->data_base = static_cast<const uint8_t*>(mapped->data) + reader.pos();
 
-        // Keep the mapping alive (store the shared_ptr in a way accessible to GGUFFile)
-        // We use a static map keyed by data_base pointer as a simple approach
-        // Actually, we'll store it via a custom destructor-based mechanism
-        // For now, leak the mapping intentionally — it lives for the process lifetime
-        // which is correct for model weights (memory-mapped, OS manages paging)
-        mapped.reset(new MappedFile(*mapped)); // prevent destruction
-        // Prevent RAII cleanup — the mmap stays alive
-        auto* leak = new std::shared_ptr<MappedFile>(mapped);
-        (void)leak;
+        // Transfer mmap ownership to the GGUFFile — mmap lives as long as the file does
+        file->mapped = std::move(mapped);
 
         result.file = std::move(file);
         result.success = true;

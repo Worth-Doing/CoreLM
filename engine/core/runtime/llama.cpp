@@ -21,10 +21,21 @@ static Tensor tensor_from_gguf(const GGUFFile& gguf, const std::string& name) {
     const void* data = gguf.tensor_data(name);
     if (!data) return Tensor();
 
+    // GGUF stores dimensions in column-major order (innermost first):
+    //   1D [n]        → Shape(n)
+    //   2D [cols,rows] → Shape(rows, cols) for our row-major convention
     Shape shape;
-    shape.ndim = ti->ndim;
-    for (int d = 0; d < (int)ti->ndim; d++) {
-        shape.dims[d] = ti->shape[d];
+    if (ti->ndim == 1) {
+        shape = Shape(ti->shape[0]);
+    } else if (ti->ndim == 2) {
+        shape = Shape(ti->shape[1], ti->shape[0]); // swap: rows, cols
+    } else if (ti->ndim == 3) {
+        shape = Shape(ti->shape[2], ti->shape[1], ti->shape[0]);
+    } else {
+        shape.ndim = ti->ndim;
+        for (int d = 0; d < (int)ti->ndim; d++) {
+            shape.dims[d] = ti->shape[ti->ndim - 1 - d]; // reverse
+        }
     }
 
     DType dtype;
@@ -32,6 +43,7 @@ static Tensor tensor_from_gguf(const GGUFFile& gguf, const std::string& name) {
         case GGUFDType::F32:  dtype = DType::F32; break;
         case GGUFDType::F16:  dtype = DType::F16; break;
         case GGUFDType::Q4_0: dtype = DType::Q4_0; break;
+        case GGUFDType::Q8_0: dtype = DType::Q8_0; break;
         default: dtype = DType::F32; break;
     }
 

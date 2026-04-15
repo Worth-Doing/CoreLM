@@ -83,6 +83,22 @@ struct GGUFTensorInfo {
     size_t      nbytes = 0;  // computed total bytes
 };
 
+// RAII wrapper for mmap'd file — must live as long as tensors are accessed
+struct MappedFile {
+    void*  data = nullptr;
+    size_t size = 0;
+    int    fd   = -1;
+
+    MappedFile() = default;
+    ~MappedFile();
+
+    // Non-copyable to prevent double-munmap
+    MappedFile(const MappedFile&) = delete;
+    MappedFile& operator=(const MappedFile&) = delete;
+    MappedFile(MappedFile&& other) noexcept;
+    MappedFile& operator=(MappedFile&& other) noexcept;
+};
+
 struct GGUFFile {
     uint32_t version = 0;
     uint64_t tensor_count = 0;
@@ -92,9 +108,10 @@ struct GGUFFile {
     std::vector<GGUFTensorInfo> tensors;
     std::unordered_map<std::string, size_t> tensor_index; // name -> index in tensors
 
-    // Memory-mapped data
+    // Memory-mapped data — mmap stays alive as long as this GGUFFile lives
     const uint8_t* data_base = nullptr;  // start of tensor data section
     size_t file_size = 0;
+    std::unique_ptr<MappedFile> mapped;  // owns the mmap lifetime
 
     // Helpers
     bool has_key(const std::string& key) const;
