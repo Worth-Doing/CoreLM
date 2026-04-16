@@ -28,6 +28,45 @@
 
 ---
 
+## Screenshots
+
+### Chat Interface
+> Streaming chat with markdown rendering, multi-turn conversations, and real-time system monitoring.
+
+<p align="center">
+  <img src="Resources/screenshots/chat-view.png" width="800" alt="CoreLM Chat Interface">
+</p>
+
+### Model Manager
+> Dual inference engine (Ollama / llama.cpp), GGUF import, and local model management.
+
+<p align="center">
+  <img src="Resources/screenshots/models-view.png" width="800" alt="CoreLM Model Manager">
+</p>
+
+### Model Browser
+> Browse and download GGUF models directly from the worthdoing Hugging Face catalog.
+
+<p align="center">
+  <img src="Resources/screenshots/browse-view.png" width="800" alt="CoreLM Model Browser">
+</p>
+
+### Downloads
+> Multi-file download manager with real-time progress tracking and disk space monitoring.
+
+<p align="center">
+  <img src="Resources/screenshots/downloads-view.png" width="800" alt="CoreLM Downloads">
+</p>
+
+### Settings
+> General settings, Ollama status, installed models count, and system configuration.
+
+<p align="center">
+  <img src="Resources/screenshots/settings-view.png" width="800" alt="CoreLM Settings">
+</p>
+
+---
+
 ## What is CoreLM?
 
 CoreLM is a **next-generation local AI studio for macOS**, designed to provide a zero-friction experience for running large language models directly on your Mac. It is the desktop client for models published by [**worthdoing**](https://huggingface.co/worthdoing) on Hugging Face.
